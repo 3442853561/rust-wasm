@@ -1,12 +1,103 @@
-# Rust + WebAssembly: an early point of coordination
+# Rust + WebAssembly = 💖
 
-This repo aims to be a simple, organic means of coordinating early work on using
-Rust and WebAssembly together.
+This repo aims to be a simple, organic means of coordinating work on using Rust
+and WebAssembly together.
 
-Some of the early material is being collected into a small [book]; please take a 
-look and contribute!
+Materials about pieces available right now are being collected into a small
+[book]; please take a look and contribute!
 
 [book]: https://rust-lang-nursery.github.io/rust-wasm/
+
+<!-- Generated with https://github.com/thlorenz/doctoc -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Vision](#vision)
+- [Get Involved!](#get-involved)
+- [Status](#status)
+  - [The Rust compiler](#the-rust-compiler)
+  - [The Rust standard library](#the-rust-standard-library)
+  - [JS Interop](#js-interop)
+    - [The JS package ecosystem](#the-js-package-ecosystem)
+    - [The DOM, GC integration, and more](#the-dom-gc-integration-and-more)
+  - [The crate ecosystem](#the-crate-ecosystem)
+- [Demos, talks and more](#demos-talks-and-more)
+- [Rust and WebAssembly book](#rust-and-webassembly-book)
+  - [Building the book](#building-the-book)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+# Vision
+
+**Compiling Rust to WebAssembly should be *the* best choice for fast code for
+the Web.**
+
+JavaScript Web applications struggle to reliably hit 60 fps. JavaScript's
+dynamic type system and garbage collection pauses don't help. Modern JITs do
+what they can, but are still unreliable. Seemingly small code changes can result
+in drastic performance regressions if you accidentally wander off the JIT's
+happy path.
+
+Rust gives programmers low-level control and reliable performance. It is free
+from the non-deterministic GC pauses that JavaScript suffers. And now
+WebAssembly lets us bring Rust's advantages to the Web.
+
+Rust is particularly well-suited for the Web. Rust's minuscule runtime enables
+small `.wasm` binary sizes and incremental adoption. Binary size is of huge
+importance since the `.wasm` must be downloaded over the network. Incrementality
+means that existing code bases don't need to be thrown away: programmers can
+start by porting their most performance-sensitive JavaScript functions to Rust
+to gain immediate benefits. Furthermore, Rust has many of the amenities that Web
+developers have come to expect, such as strong package management, expressive
+abstractions, and a welcoming community.
+
+Let's make it happen!
+
+*See also [Rust and the case for WebAssembly in 2018.][case-for-wasm]*
+
+We envision the pipeline that fits Rust into JavaScript package management and
+bundler ecosystem to look something like this:
+
+<img alt="Rust to WebAssembly to NPM to bundler to Webpage pipeline" src="./pipeline.png"/>
+
+[case-for-wasm]: https://mgattozzi.com/rust-wasm
+
+# Get Involved!
+
+* Join us on IRC at [`#rust-wasm` on `irc.mozilla.org`][irc] ([web chat])
+
+* Read the book, compile some Rust into WebAssembly, and if you ran into a paper
+  cut or roadblock, [let us know by filing an issue!][file-issue]
+
+* [Help write the Rust and WebAssembly book](#rust-and-webassembly-book)
+
+* [Fix WebAssembly-specific issues in `rustc`][o-wasm]
+
+* [Write tooling for WebAssembly][tooling]
+
+    * [`wasm-bindgen` is a project for facilitating high-level interactions between wasm modules and JS.][wasm-bindgen]
+        * [Design][wasm-bindgen-design]
+        * [Open Issues][wasm-bindgen-issues]
+
+    * [`svelte` is a work-in-progress code size profiler for WebAssembly.][svelte]
+        * [Contributing][svelte-contributing]
+        * [Open Issues][svelte-issues]
+
+* Take a look at [this repo's open issues][issues]
+
+[irc]: irc://irc.mozilla.org#rust-wasm
+[web chat]: https://client02.chat.mibbit.com/?channel=%23rust-wasm&server=irc.mozilla.org
+[file-issue]: https://github.com/rust-lang-nursery/rust-wasm/issues/new
+[o-wasm]: https://github.com/rust-lang/rust/labels/O-wasm
+[tooling]: https://github.com/rust-lang-nursery/rust-wasm/issues/10
+[issues]: https://github.com/rust-lang-nursery/rust-wasm/issues
+[wasm-bindgen]: https://github.com/alexcrichton/wasm-bindgen
+[wasm-bindgen-design]: https://github.com/alexcrichton/wasm-bindgen/blob/master/DESIGN.md
+[wasm-bindgen-issues]: https://github.com/alexcrichton/wasm-bindgen/issues
+[svelte]: https://github.com/fitzgen/svelte
+[svelte-contributing]: https://github.com/fitzgen/svelte/blob/master/CONTRIBUTING.md
+[svelte-issues]: https://github.com/fitzgen/svelte/issues
 
 # Status
 
@@ -18,19 +109,18 @@ The Rust compiler currently supports two wasm-related targets:
   back-end. It's appropriate when you're compiling pure Rust code, i.e. you have
   no C dependencies. Compared to the emscripten target, it produces much leaner
   code by default and is much easier to set
-  up. [Here's how to set it up](https://www.hellorust.com/setup/wasm-target/).
+  up. [Here's how to set it up](https://rust-lang-nursery.github.io/rust-wasm/setup.html).
 
 - `wasm32-unknown-emscripten`. This target compiles to wasm via the emscripten
   toolchain. It's what you should use if you have C dependencies, including
   libc. [Here's how to set it up](https://www.hellorust.com/setup/emscripten/).
 
-The `wasm32-unknown-unknown` is particularly promising for integrating bits of
+The `wasm32-unknown-unknown` target is particularly promising for integrating bits of
 "greenfield" Rust code into JS projects. However, it is also the less mature
 backend:
 
 - It [only supports compiling with optimizations on](https://github.com/aturon/rust-wasm/issues/1).
 - It [requires compiling with a single, massive compilation unit](https://github.com/aturon/rust-wasm/issues/2).
-- Some improvements are blocked on [rustc's LLVM lagging far behind](https://github.com/aturon/rust-wasm/issues/3).
 
 ## The Rust standard library
 
@@ -51,7 +141,9 @@ Each of the wasm targets has a different story with respect to `std`:
   works, but at the cost of significant binary bloat.
 
 ## JS Interop
+
 ### The JS package ecosystem
+
 In the book we focused on the details of [function-level interop][book-interop].
 But in practice, it's vital to interoperate at the *package* level as well, which
 means producing and consuming npm packages.
@@ -110,11 +202,12 @@ There is some confusion about whether wasm code can work with the DOM today, or
 whether that's effectively blocked on GC integration.
 
 To clear this up: **wasm is quite capable of working with the DOM today**. You
-can employ strategies like those in [wasm-bindgen] to operate on the DOM via
-calls back into JS. However, such calls do impose an overhead, so efficiency
-gains are most easily had if once can batch up DOM interactions. Improvements to
-the DOM, like the [changelist proposal], and improvements to WebAssembly, like
-the [Host Bindings proposal](https://github.com/WebAssembly/design/issues/1148),
+can employ strategies like those in [`wasm-bindgen`][wasm-bindgen] to operate on
+the DOM via calls back into JS. However, such calls do impose an overhead, so
+efficiency gains are most easily had if once can batch up DOM
+interactions. Improvements to the DOM, like the [changelist proposal], and
+improvements to WebAssembly, like the
+[Host Bindings proposal](https://github.com/WebAssembly/design/issues/1148),
 will further smooth the path.
 
 [changelist proposal]: https://github.com/whatwg/dom/issues/270
@@ -140,13 +233,17 @@ Rust and wasm.
   - https://github.com/mbasso/awesome-wasm
   - http://wasmweekly.news/
 
-# rust-wasm-book
+# Rust and WebAssembly book
 
 This repo also contains documentation on using Rust for wasm, common workflows,
 how to get started and more. It acts as a guide for how to do some neat things
 with it. Over time this might extend to more things or act as a more internal
 rather than user facing resource as this repo evolves. Considering the early
 stage nature of wasm and Rust with wasm the two are indistinguishable right now.
+
+[Open issues for improving the Rust and WebAssembly book.][book-issues]
+
+[book-issues]: https://github.com/rust-lang-nursery/rust-wasm/labels/book
 
 ## Building the book
 
